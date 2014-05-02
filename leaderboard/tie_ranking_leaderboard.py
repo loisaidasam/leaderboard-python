@@ -29,6 +29,18 @@ class TieRankingLeaderboard(Leaderboard):
             'ties_namespace',
             self.DEFAULT_TIES_NAMESPACE)
 
+    def delete_leaderboard_named(self, leaderboard_name):
+        '''
+        Delete the named leaderboard.
+
+        @param leaderboard_name [String] Name of the leaderboard.
+        '''
+        pipeline = self.redis_connection.pipeline()
+        pipeline.delete(leaderboard_name)
+        pipeline.delete(self._member_data_key(leaderboard_name))
+        pipeline.delete(self._ties_leaderboard_key(leaderboard_name))
+        pipeline.execute()
+
     def rank_member_in(
             self, leaderboard_name, member, score, member_data=None):
         '''
@@ -51,6 +63,135 @@ class TieRankingLeaderboard(Leaderboard):
                 self._member_data_key(leaderboard_name),
                 member,
                 member_data)
+        pipeline.execute()
+
+    def rank_member_across(
+            self, leaderboards, member, score, member_data=None):
+        '''
+        Rank a member across multiple leaderboards.
+
+        @param leaderboards [Array] Leaderboard names.
+        @param member [String] Member name.
+        @param score [float] Member score.
+        @param member_data [String] Optional member data.
+        '''
+        pipeline = self.redis_connection.pipeline()
+        for leaderboard_name in leaderboards:
+            if isinstance(self.redis_connection, Redis):
+                pipeline.zadd(leaderboard_name, member, score)
+                pipeline.zadd(self._ties_leaderboard_key(leaderboard_name), str(float(score)), score)
+            else:
+                pipeline.zadd(leaderboard_name, score, member)
+                pipeline.zadd(self._ties_leaderboard_key(leaderboard_name), score, str(float(score)))
+            if member_data:
+                pipeline.hset(
+                    self._member_data_key(leaderboard_name),
+                    member,
+                    member_data)
+        pipeline.execute()
+
+    def rank_members_in(self, leaderboard_name, members_and_scores):
+        '''
+        Rank an array of members in the named leaderboard.
+
+        @param leaderboard_name [String] Name of the leaderboard.
+        @param members_and_scores [Array] Variable list of members and scores.
+        '''
+        pipeline = self.redis_connection.pipeline()
+        for member, score in grouper(2, members_and_scores):
+            if isinstance(self.redis_connection, Redis):
+                pipeline.zadd(leaderboard_name, member, score)
+                pipeline.zadd(self._ties_leaderboard_key(leaderboard_name), str(float(score)), score)
+            else:
+                pipeline.zadd(leaderboard_name, score, member)
+                pipeline.zadd(self._ties_leaderboard_key(leaderboard_name), score, str(float(score)))
+        pipeline.execute()
+
+    def remove_member_from(self, leaderboard_name, member):
+        '''
+        Remove the optional member data for a given member in the named leaderboard.
+
+        @param leaderboard_name [String] Name of the leaderboard.
+        @param member [String] Member name.
+        '''
+        member_score = self.redis_connection.zscore(leaderboard_name, member) or None
+        can_delete_score = member_score and len(members_from_score_range_in(leaderboard_name, member_score, member_score)) == 1
+
+        pipeline = self.redis_connection.pipeline()
+        pipeline.zrem(leaderboard_name, member)
+        if can_delete_score:
+            pipeline.zrem(self._ties_leaderboard_key(leaderboard_name), str(float(member_score)))
+        pipeline.hdel(self._member_data_key(leaderboard_name), member)
+        pipeline.execute()
+
+    def rank_for_in(self, leaderboard_name, member):
+        '''
+        Retrieve the rank for a member in the named leaderboard.
+
+        @param leaderboard_name [String] Name of the leaderboard.
+        @param member [String] Member name.
+        @return the rank for a member in the leaderboard.
+        '''
+        member_score = score_for_in(leaderboard_name, member)
+        if self.order == self.ASC:
+            try:
+                return self.redis_connection.zrank(
+                    self._ties_leaderboard_key(leaderboard_name), str(float(member_score))) + 1
+            except:
+                return None
+        else:
+            try:
+                return self.redis_connection.zrevrank(
+                    self._ties_leaderboard_key(leaderboard_name), str(float(member_score))) + 1
+            except:
+                return None
+
+    def remove_members_in_score_range_in(
+            self, leaderboard_name, min_score, max_score):
+        '''
+        Remove members from the named leaderboard in a given score range.
+
+        @param leaderboard_name [String] Name of the leaderboard.
+        @param min_score [float] Minimum score.
+        @param max_score [float] Maximum score.
+        '''
+        self.redis_connection.zremrangebyscore(
+            leaderboard_name,
+            min_score,
+            max_score)
+        self.redis_connection.zremrangebyscore(
+            self._ties_leaderboard_key(leaderboard_name),
+            min_score,
+            max_score)
+
+    def expire_leaderboard_for(self, leaderboard_name, seconds):
+        '''
+        Expire the given leaderboard in a set number of seconds. Do not use this with
+        leaderboards that utilize member data as there is no facility to cascade the
+        expiration out to the keys for the member data.
+
+        @param leaderboard_name [String] Name of the leaderboard.
+        @param seconds [int] Number of seconds after which the leaderboard will be expired.
+        '''
+        pipeline = self.redis_connection.pipeline()
+        pipeline.expire(leaderboard_name, seconds)
+        pipeline.expire(self._ties_leaderboard_key(leaderboard_name), seconds)
+        pipeline.expire(self._member_data_key(leaderboard_name), seconds)
+        pipeline.execute()
+
+    def expire_leaderboard_at_for(self, leaderboard_name, timestamp):
+        '''
+        Expire the given leaderboard at a specific UNIX timestamp. Do not use this with
+        leaderboards that utilize member data as there is no facility to cascade the
+        expiration out to the keys for the member data.
+
+        @param leaderboard_name [String] Name of the leaderboard.
+        @param timestamp [int] UNIX timestamp at which the leaderboard will be expired.
+        '''
+        pipeline = self.redis_connection.pipeline()
+        pipeline.expireat(leaderboard_name, timestamp)
+        pipeline.expireat(self._ties_leaderboard_key(leaderboard_name), timestamp)
+        pipeline.expireat(self._member_data_key(leaderboard_name), timestamp)
         pipeline.execute()
 
     def ranked_in_list_in(self, leaderboard_name, members, **options):
