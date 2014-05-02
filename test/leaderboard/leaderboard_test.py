@@ -1,9 +1,8 @@
 from redis import Redis, StrictRedis, ConnectionPool
-from leaderboard import Leaderboard
+from leaderboard.leaderboard import Leaderboard
 import unittest
 import time
 import sure
-
 
 class LeaderboardTest(unittest.TestCase):
 
