@@ -36,6 +36,45 @@ class TieRankingLeaderboardTest(unittest.TestCase):
         leaders[3]['rank'].should.equal(2)
         leaders[4]['rank'].should.equal(3)
 
+    def test_correct_rankings_for_leaders_with_different_page_sizes(self):
+        self.leaderboard.rank_member('member_1', 50)
+        self.leaderboard.rank_member('member_2', 50)
+        self.leaderboard.rank_member('member_3', 30)
+        self.leaderboard.rank_member('member_4', 30)
+        self.leaderboard.rank_member('member_5', 10)
+        self.leaderboard.rank_member('member_6', 50)
+        self.leaderboard.rank_member('member_7', 50)
+        self.leaderboard.rank_member('member_8', 30)
+        self.leaderboard.rank_member('member_9', 30)
+        self.leaderboard.rank_member('member_10', 10)
+
+        leaders = self.leaderboard.leaders(1, page_size=3)
+        leaders[0]['rank'].should.equal(1)
+        leaders[1]['rank'].should.equal(1)
+        leaders[2]['rank'].should.equal(1)
+
+        leaders = self.leaderboard.leaders(2, page_size=3)
+        leaders[0]['rank'].should.equal(1)
+        leaders[1]['rank'].should.equal(2)
+        leaders[2]['rank'].should.equal(2)
+
+    def test_correct_rankings_for_around_me(self):
+        self.leaderboard.rank_member('member_1', 50)
+        self.leaderboard.rank_member('member_2', 50)
+        self.leaderboard.rank_member('member_3', 30)
+        self.leaderboard.rank_member('member_4', 30)
+        self.leaderboard.rank_member('member_5', 10)
+        self.leaderboard.rank_member('member_6', 50)
+        self.leaderboard.rank_member('member_7', 50)
+        self.leaderboard.rank_member('member_8', 30)
+        self.leaderboard.rank_member('member_9', 30)
+        self.leaderboard.rank_member('member_10', 10)
+
+        leaders = self.leaderboard.around_me('member_3', page_size=3)
+        leaders[0]['rank'].should.equal(2)
+        leaders[1]['rank'].should.equal(2)
+        leaders[2]['rank'].should.equal(3)
+
     def test_removing_a_single_member_will_also_remove_their_score_from_the_tie_scores_leaderboard_when_appropriate(self):
         self.leaderboard.rank_member('member_1', 50)
         self.leaderboard.rank_member('member_2', 50)
