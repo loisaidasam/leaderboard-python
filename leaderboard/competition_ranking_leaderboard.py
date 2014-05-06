@@ -5,6 +5,7 @@ from itertools import izip_longest
 
 
 class CompetitionRankingLeaderboard(Leaderboard):
+
     def rank_for_in(self, leaderboard_name, member):
         '''
         Retrieve the rank for a member in the named leaderboard.
@@ -23,7 +24,7 @@ class CompetitionRankingLeaderboard(Leaderboard):
         else:
             try:
                 return self.redis_connection.zcount(
-                    '(%s' % member_score, '+inf') + 1
+                    leaderboard_name, '(%s' % member_score, '+inf') + 1
             except:
                 return None
 
@@ -43,17 +44,19 @@ class CompetitionRankingLeaderboard(Leaderboard):
             pipeline.zrevrank(leaderboard_name, member)
         responses = pipeline.execute()
 
-        if respones[0] is not None:
+        if responses[0] is not None:
             responses[0] = float(responses[0])
 
         if self.order == self.ASC:
             try:
-                responses[1] = self.redis_connection.zcount(leaderboard_name, '-inf', "(%s"%str(float(responses[0]))) + 1
+                responses[1] = self.redis_connection.zcount(
+                    leaderboard_name, '-inf', "(%s" % str(float(responses[0]))) + 1
             except:
                 responses[1] = None
         else:
             try:
-                responses[1] = self.redis_connection.zcount(leaderboard_name, "(%s"%str(float(responses[0])), '+inf') + 1
+                responses[1] = self.redis_connection.zcount(
+                    leaderboard_name, "(%s" % str(float(responses[0])), '+inf') + 1
             except:
                 responses[1] = None
 
@@ -96,11 +99,11 @@ class CompetitionRankingLeaderboard(Leaderboard):
             data[self.SCORE_KEY] = score
 
             if self.order == self.ASC:
-                data[self.RANK_KEY] = self.redis_connection.zrank(
-                    self._ties_leaderboard_key(leaderboard_name), str(data[self.SCORE_KEY]))
+                data[self.RANK_KEY] = self.redis_connection.zcount(
+                    leaderboard_name, '-inf', "(%s" % str(float(data[self.SCORE_KEY])))
             else:
-                data[self.RANK_KEY] = self.redis_connection.zrevrank(
-                    self._ties_leaderboard_key(leaderboard_name), str(data[self.SCORE_KEY]))
+                data[self.RANK_KEY] = self.redis_connection.zcount(
+                    leaderboard_name, "(%s" % str(float(data[self.SCORE_KEY])), '+inf')
             if data[self.RANK_KEY] is not None:
                 data[self.RANK_KEY] += 1
 
