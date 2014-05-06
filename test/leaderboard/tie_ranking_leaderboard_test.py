@@ -13,9 +13,6 @@ class TieRankingLeaderboardTest(unittest.TestCase):
     def tearDown(self):
         self.leaderboard.redis_connection.flushdb()
 
-    def test_version(self):
-        TieRankingLeaderboard.VERSION.should.equal('2.8.0')
-
     def test_delete_the_ties_ranking_internal_leaderboard_when_you_delete_a_leaderboard_configured_for_ties(self):
         self.leaderboard.rank_member('member_1', 50)
         self.leaderboard.redis_connection.exists('ties:ties').should.be.true
