@@ -4,6 +4,7 @@ import unittest
 import time
 import sure
 
+
 class LeaderboardTest(unittest.TestCase):
 
     def setUp(self):
