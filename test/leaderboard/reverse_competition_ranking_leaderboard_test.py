@@ -9,7 +9,8 @@ import sure
 class ReverseCompetitionRankingLeaderboardTest(unittest.TestCase):
 
     def setUp(self):
-        self.leaderboard = CompetitionRankingLeaderboard('ties', order=Leaderboard.ASC)
+        self.leaderboard = CompetitionRankingLeaderboard(
+            'ties', order=Leaderboard.ASC)
 
     def tearDown(self):
         self.leaderboard.redis_connection.flushdb()
@@ -54,7 +55,6 @@ class ReverseCompetitionRankingLeaderboardTest(unittest.TestCase):
         leaders[0]['rank'].should.equal(7)
         leaders[1]['rank'].should.equal(7)
         leaders[2]['rank'].should.equal(7)
-
 
     def test_correct_rankings_for_around_me(self):
         self.leaderboard.rank_member('member_1', 50)
