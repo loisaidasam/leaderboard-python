@@ -10,7 +10,7 @@ def grouper(n, iterable, fillvalue=None):
 
 
 class Leaderboard(object):
-    VERSION = '2.9.0'
+    VERSION = '2.10.0'
     DEFAULT_PAGE_SIZE = 25
     DEFAULT_REDIS_HOST = 'localhost'
     DEFAULT_REDIS_PORT = 6379
@@ -941,8 +941,7 @@ class Leaderboard(object):
         @param options [Hash] Options to be used when retrieving the page from the leaderboard.
         @return a page of leaders from the leaderboard for a given list of members.
         '''
-        return self.ranked_in_list_in(
-            self.leaderboard_name, members, **options)
+        return self.ranked_in_list_in(self.leaderboard_name, members, **options)
 
     def ranked_in_list_in(self, leaderboard_name, members, **options):
         '''
@@ -972,7 +971,10 @@ class Leaderboard(object):
             data = {}
             data[self.MEMBER_KEY] = member
             rank = responses[index * 2]
-            if rank is not None:
+            if rank is None:
+                if options.get('include_missing') == False:
+                    continue
+            else:
                 rank += 1
             data[self.RANK_KEY] = rank
             score = responses[index * 2 + 1]
