@@ -205,8 +205,6 @@ class Leaderboard(object):
         @param member_data [String] Optional member_data.
         '''
         current_score = self.redis_connection.zscore(leaderboard_name, member)
-        if current_score is not None:
-            current_score = float(current_score)
 
         if rank_conditional(self, member, current_score, score, member_data, {'reverse': self.order}):
             self.rank_member_in(leaderboard_name, member, score, member_data)
@@ -445,11 +443,7 @@ class Leaderboard(object):
         @param member [String] Member name.
         @return the score for a member in the leaderboard or +None+ if the member is not in the leaderboard.
         '''
-        score = self.redis_connection.zscore(leaderboard_name, member)
-        if score is not None:
-            score = float(score)
-
-        return score
+        return self.redis_connection.zscore(leaderboard_name, member)
 
     def score_and_rank_for(self, member):
         '''
@@ -989,8 +983,6 @@ class Leaderboard(object):
                 rank += 1
             data[self.RANK_KEY] = rank
             score = responses[index * 2 + 1]
-            if score is not None:
-                score = float(score)
             data[self.SCORE_KEY] = score
             if score_last is None or score != score_last:
                 rank_relative = index + 1
